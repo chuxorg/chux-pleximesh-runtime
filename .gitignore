@@ -38,3 +38,8 @@ Thumbs.db
 *.tmp
 *.swp
 .env*
+
+# Runtime artifacts and secrets
+.initkit/
+.env.local
+.env
