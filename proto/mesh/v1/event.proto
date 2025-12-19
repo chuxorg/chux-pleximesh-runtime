@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package mesh.v1;
+
+option go_package = "github.com/chuxorg/chux-agent-mesh/meshapi/meshpb";
+
+message AgentDescriptor {
+  string agent_id = 1;
+  string role = 2;
+}
+
+message TargetDescriptor {
+  string agent_id = 1;
+  string scope = 2;
+}
+
+message RuntimeContext {
+  string runtime_version = 1;
+  string initkit_version = 2;
+}
+
+message EventEnvelope {
+  string event_id = 1;
+  string event_type = 2;
+  string event_domain = 3;
+  AgentDescriptor source_agent = 4;
+  TargetDescriptor target = 5;
+  string timestamp = 6;
+  string correlation_id = 7;
+  bytes payload = 8;
+  string signature = 9;
+  RuntimeContext runtime = 10;
+}

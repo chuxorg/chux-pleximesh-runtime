@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package mesh.v1;
+
+import "mesh/v1/event.proto";
+
+option go_package = "github.com/chuxorg/chux-agent-mesh/meshapi/meshpb";
+
+enum AckStatus {
+  ACK_STATUS_UNSPECIFIED = 0;
+  ACK_STATUS_ACCEPTED = 1;
+  ACK_STATUS_REJECTED = 2;
+}
+
+message BusIngressRequest {
+  EventEnvelope envelope = 1;
+}
+
+message BusIngressResponse {
+  string event_id = 1;
+  AckStatus status = 2;
+  string message = 3;
+}
+
+message SubscriptionRequest {
+  repeated string domains = 1;
+  repeated string event_types = 2;
+  string agent_id = 3;
+}
+
+service EventBus {
+  rpc Publish(stream BusIngressRequest) returns (stream BusIngressResponse);
+  rpc Subscribe(SubscriptionRequest) returns (stream EventEnvelope);
+}
