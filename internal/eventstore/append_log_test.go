@@ -103,6 +103,57 @@ func TestAppendOrdering(t *testing.T) {
 	}
 }
 
+func TestAppendSyncFailureDoesNotSkewOffsets(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fsync_failure.log")
+	log, err := OpenAppendLog(path)
+	if err != nil {
+		t.Fatalf("open log: %v", err)
+	}
+	t.Cleanup(func() { _ = log.Close() })
+
+	first := &meshpb.EventEnvelope{EventId: "first"}
+	fail := &meshpb.EventEnvelope{EventId: "fail"}
+	final := &meshpb.EventEnvelope{EventId: "final"}
+
+	off1, err := log.Append(context.Background(), first)
+	if err != nil {
+		t.Fatalf("initial append: %v", err)
+	}
+
+	sizeAfterFirst := fileSize(t, log.file)
+
+	syncErr := errors.New("boom")
+	failSync := true
+	log.syncFunc = func() error {
+		if failSync {
+			failSync = false
+			return syncErr
+		}
+		return nil
+	}
+
+	if _, err := log.Append(context.Background(), fail); !errors.Is(err, syncErr) {
+		t.Fatalf("append should surface sync error: got %v want %v", err, syncErr)
+	}
+
+	sizeAfterFailure := fileSize(t, log.file)
+	if sizeAfterFailure < sizeAfterFirst {
+		t.Fatalf("file shrank unexpectedly: got %d want >= %d", sizeAfterFailure, sizeAfterFirst)
+	}
+
+	offFinal, err := log.Append(context.Background(), final)
+	if err != nil {
+		t.Fatalf("final append: %v", err)
+	}
+
+	if offFinal != sizeAfterFailure {
+		t.Fatalf("next append offset mismatch: got %d want %d", offFinal, sizeAfterFailure)
+	}
+	if offFinal <= off1 {
+		t.Fatalf("offsets not strictly increasing: [%d, %d]", off1, offFinal)
+	}
+}
+
 func TestDetectsCorruption(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "corrupt.log")
 	log, err := OpenAppendLog(path)
@@ -224,4 +275,15 @@ func readAllEnvelopes(t *testing.T, path string) []*meshpb.EventEnvelope {
 	}
 
 	return records
+}
+
+func fileSize(t *testing.T, f *os.File) int64 {
+	t.Helper()
+
+	info, err := f.Stat()
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+
+	return info.Size()
 }

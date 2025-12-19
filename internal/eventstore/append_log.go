@@ -109,6 +109,10 @@ func (l *AppendLog) Append(ctx context.Context, env *meshpb.EventEnvelope) (int6
 		return 0, err
 	}
 	if err := l.syncFunc(); err != nil {
+		// Option A: rollback the partially written record so offsets cannot regress.
+		if rollbackErr := l.rollback(offset); rollbackErr != nil {
+			return 0, errors.Join(err, rollbackErr)
+		}
 		return 0, err
 	}
 
@@ -252,4 +256,12 @@ func writeAll(w io.Writer, data []byte) error {
 		data = data[n:]
 	}
 	return nil
+}
+
+func (l *AppendLog) rollback(offset int64) error {
+	if err := l.file.Truncate(offset); err != nil {
+		return err
+	}
+	_, err := l.file.Seek(offset, io.SeekStart)
+	return err
 }
