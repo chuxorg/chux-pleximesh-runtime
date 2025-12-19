@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net"
 	"sync/atomic"
@@ -19,6 +20,7 @@ type Config struct {
 	Address   string
 	Listener  net.Listener
 	TLSConfig *tls.Config
+	ClientCAs *x509.CertPool
 	Router    *messagebus.Router
 	Verifier  *ems.Verifier
 }
@@ -53,6 +55,13 @@ func NewServer(cfg Config) (*Server, error) {
 	if tlsConfig.MinVersion == 0 {
 		tlsConfig.MinVersion = tls.VersionTLS13
 	}
+	if cfg.ClientCAs != nil {
+		tlsConfig.ClientCAs = cfg.ClientCAs
+	}
+	if tlsConfig.ClientCAs == nil {
+		return nil, errors.New("grpcserver: client CA pool is required for mutual TLS")
+	}
+	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	creds := credentials.NewTLS(tlsConfig)
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	meshpb.RegisterEventBusServer(grpcServer, &busService{

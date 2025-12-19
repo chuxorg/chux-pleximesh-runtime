@@ -25,7 +25,6 @@ import (
 	"github.com/chuxorg/chux-agent-mesh/pkg/event"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestServerPublishesToMultipleSubscribers(t *testing.T) {
@@ -42,9 +41,10 @@ func TestServerPublishesToMultipleSubscribers(t *testing.T) {
 	scheduler := ems.NewSliceScheduler(ems.WithSchedulerClock(clock))
 	verifier := ems.NewVerifier(km, scheduler, ems.WithVerifierClock(clock))
 
-	serverTLS, clientCreds := newTLSConfig(t)
+	serverTLS, clientCreds, _, clientCAPool := newMutualTLSConfigs(t)
 	server, err := NewServer(Config{
 		TLSConfig: serverTLS,
+		ClientCAs: clientCAPool,
 		Router:    router,
 		Verifier:  verifier,
 	})
@@ -143,7 +143,7 @@ func TestServerPublishesToMultipleSubscribers(t *testing.T) {
 	}
 }
 
-func TestServerRejectsInsecureClients(t *testing.T) {
+func TestServerRejectsClientsWithoutCertificates(t *testing.T) {
 	router := messagebus.NewRouter()
 	now := time.Now().UTC()
 	km := ems.NewKeyManager(ems.WithTimeSource(func() time.Time { return now }))
@@ -154,10 +154,11 @@ func TestServerRejectsInsecureClients(t *testing.T) {
 	}
 	scheduler := ems.NewSliceScheduler()
 	verifier := ems.NewVerifier(km, scheduler)
-	serverTLS, _ := newTLSConfig(t)
+	serverTLS, _, noClientCreds, clientCAPool := newMutualTLSConfigs(t)
 
 	server, err := NewServer(Config{
 		TLSConfig: serverTLS,
+		ClientCAs: clientCAPool,
 		Router:    router,
 		Verifier:  verifier,
 	})
@@ -175,20 +176,43 @@ func TestServerRejectsInsecureClients(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err = grpc.DialContext(ctx, server.Addr(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	_, err = grpc.DialContext(ctx, server.Addr(), grpc.WithTransportCredentials(noClientCreds), grpc.WithBlock())
 	if err == nil {
-		t.Fatalf("expected TLS handshake failure")
+		t.Fatalf("expected mutual TLS handshake failure for missing client certificate")
 	}
 }
 
-func newTLSConfig(t *testing.T) (*tls.Config, credentials.TransportCredentials) {
+func newMutualTLSConfigs(t *testing.T) (*tls.Config, credentials.TransportCredentials, credentials.TransportCredentials, *x509.CertPool) {
 	t.Helper()
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatalf("generate key: %v", err)
 	}
+	caTemplate := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+	caDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	if err != nil {
+		t.Fatalf("create CA cert: %v", err)
+	}
+	caCert, err := x509.ParseCertificate(caDER)
+	if err != nil {
+		t.Fatalf("parse CA cert: %v", err)
+	}
+	caPool := x509.NewCertPool()
+	caPool.AddCert(caCert)
+
+	serverKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate server key: %v", err)
+	}
 	template := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
+		SerialNumber: big.NewInt(2),
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
@@ -196,26 +220,51 @@ func newTLSConfig(t *testing.T) (*tls.Config, credentials.TransportCredentials) 
 		DNSNames:     []string{"localhost"},
 		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
 	}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	serverDER, err := x509.CreateCertificate(rand.Reader, template, caCert, &serverKey.PublicKey, caKey)
 	if err != nil {
-		t.Fatalf("create cert: %v", err)
+		t.Fatalf("create server cert: %v", err)
 	}
 	serverCert := tls.Certificate{
-		Certificate: [][]byte{der},
-		PrivateKey:  priv,
+		Certificate: [][]byte{serverDER, caDER},
+		PrivateKey:  serverKey,
 	}
 	serverTLS := &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
+		ClientCAs:    caPool,
 		MinVersion:   tls.VersionTLS13,
 	}
-	cert, err := x509.ParseCertificate(der)
+
+	clientKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		t.Fatalf("parse cert: %v", err)
+		t.Fatalf("generate client key: %v", err)
 	}
-	pool := x509.NewCertPool()
-	pool.AddCert(cert)
-	clientCreds := credentials.NewClientTLSFromCert(pool, "localhost")
-	return serverTLS, clientCreds
+	clientTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(3),
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	clientDER, err := x509.CreateCertificate(rand.Reader, clientTemplate, caCert, &clientKey.PublicKey, caKey)
+	if err != nil {
+		t.Fatalf("create client cert: %v", err)
+	}
+	clientCert := tls.Certificate{
+		Certificate: [][]byte{clientDER, caDER},
+		PrivateKey:  clientKey,
+	}
+	authClientTLS := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      caPool,
+		ServerName:   "localhost",
+		MinVersion:   tls.VersionTLS13,
+	}
+	noClientTLS := &tls.Config{
+		RootCAs:    caPool,
+		ServerName: "localhost",
+		MinVersion: tls.VersionTLS13,
+	}
+	return serverTLS, credentials.NewTLS(authClientTLS), credentials.NewTLS(noClientTLS), caPool
 }
 
 const (
