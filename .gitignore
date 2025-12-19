@@ -39,6 +39,7 @@ Thumbs.db
 *.tmp
 *.swp
 .env*
+.cache/
 
 # Runtime artifacts and secrets
 .initkit/
