@@ -44,3 +44,4 @@ Thumbs.db
 .initkit/
 .env.local
 .env
+.gocache/
