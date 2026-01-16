@@ -1,0 +1,10 @@
+bin
+tmp
+backups
+.git
+.github
+**/*.swp
+**/*.swo
+**/*.tmp
+*.log
+/vendor
