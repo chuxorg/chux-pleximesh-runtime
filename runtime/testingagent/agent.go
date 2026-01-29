@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chuxorg/chux-agent-mesh/runtime/maestro"
+	"github.com/chuxorg/chux-agent-mesh/runtime/qa"
 	"github.com/chuxorg/chux-agent-mesh/runtime/transport"
 )
 
@@ -29,6 +30,9 @@ type Agent struct {
 	pendingIntents []pendingIntent
 	runs           map[string]*runTrace
 	finalizeCh     chan string
+	clock          qa.Clock
+	observer       qa.Observer
+	finalizeGrace  time.Duration
 }
 
 // Report summarizes a single run's findings.
@@ -68,11 +72,7 @@ type runTrace struct {
 
 // New creates a testing agent bound to the shared transport bus.
 func New(bus *transport.Bus) *Agent {
-	return &Agent{
-		bus:        bus,
-		runs:       make(map[string]*runTrace),
-		finalizeCh: make(chan string, defaultTestingAgentQueueSize),
-	}
+	return NewWithOptions(bus, Options{})
 }
 
 // Start begins observing events and emitting testing reports.
@@ -249,11 +249,13 @@ func (a *Agent) finalizeRun(ctx context.Context, trace *runTrace) {
 		Findings: findings,
 	}
 	meta := map[string]string{"run_id": trace.runID}
+	a.observe("testingagent.report.publish", "event", fmt.Sprintf("run_id=%s findings=%d", trace.runID, len(findings)))
 	a.bus.Publish(transport.Event{
 		Type:     testingReportGeneratedType,
 		Payload:  report,
 		Metadata: meta,
 	})
+	a.observe("testingagent.report.log", "log", fmt.Sprintf("run_id=%s", trace.runID))
 	log.Printf("testing.agent run_id=%s summary=%s findings=%d", trace.runID, summary, len(findings))
 	trace.reported = true
 	delete(a.runs, trace.runID)
@@ -328,13 +330,12 @@ func errorFinding(detail string) ReportFinding {
 	return ReportFinding{Severity: "error", Detail: detail}
 }
 
-const finalizeGrace = 20 * time.Millisecond
-
 func (a *Agent) scheduleFinalization(ctx context.Context, trace *runTrace) {
 	runID := trace.runID
 	go func() {
 		select {
-		case <-time.After(finalizeGrace):
+		case <-a.clock.After(a.finalizeGrace):
+			a.observe("testingagent.finalize_timer", "time", fmt.Sprintf("run_id=%s", runID))
 			select {
 			case a.finalizeCh <- runID:
 			case <-ctx.Done():
@@ -352,4 +353,15 @@ func (a *Agent) handleFinalizeSignal(ctx context.Context, runID string) {
 	if trace.runCompletedEvent || trace.runAbortedEvent || trace.finalState != "" {
 		a.finalizeRun(ctx, trace)
 	}
+}
+
+func (a *Agent) observe(name, sideEffect, detail string) {
+	if a == nil || a.observer == nil {
+		return
+	}
+	a.observer.Record(qa.BoundaryEvent{
+		Name:       name,
+		SideEffect: sideEffect,
+		Detail:     detail,
+	})
 }

@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/chuxorg/chux-agent-mesh/runtime/guardian"
+	"github.com/chuxorg/chux-agent-mesh/runtime/qa"
 )
 
 const (
@@ -45,6 +46,8 @@ type Maestro struct {
 
 	mu               sync.Mutex
 	awaitingGuidance bool
+	runIDGenerator   func() string
+	observer         qa.Observer
 }
 
 // EnforcementClient emits task.evaluate messages and returns Guardian decisions.
@@ -81,6 +84,8 @@ func New(enforcement EnforcementClient, outcomes OutcomePublisher, runStates Run
 		guidance:    guidance,
 		plans:       plans,
 		maxAttempts: defaultMaxAttempt,
+		runIDGenerator: generateRunID,
+		observer:       qa.NopObserver{},
 	}
 }
 
@@ -217,7 +222,11 @@ func (m *Maestro) HandleIntent(ctx context.Context, submission IntentSubmission)
 	}
 
 	m.resolveGuidanceFromIntent(submission.Metadata)
-	runID := generateRunID()
+	runID := m.runIDGenerator()
+	if runID == "" {
+		runID = generateRunID()
+	}
+	m.observe("maestro.run_id_generated", "random", fmt.Sprintf("run_id=%s", runID))
 	posture := m.inferPosture(submission)
 	intent := m.inferIntent(submission)
 	artifact := Artifact{
@@ -232,6 +241,7 @@ func (m *Maestro) HandleIntent(ctx context.Context, submission IntentSubmission)
 		attempt++
 		m.emitRunState(ctx, runID, RunStateEvaluating, attempt)
 		taskMsg := m.newTaskEvaluate(runID, posture, intent, artifact)
+		m.observe("maestro.enforcement.evaluate_task", "external_call", fmt.Sprintf("run_id=%s attempt=%d", runID, attempt))
 		decision, err := m.enforcement.EvaluateTask(ctx, taskMsg)
 		if err != nil {
 			return fmt.Errorf("evaluate task: %w", err)
@@ -246,6 +256,7 @@ func (m *Maestro) HandleIntent(ctx context.Context, submission IntentSubmission)
 			learning := extractLearning(decision.Guidance.Description)
 			m.emitRunState(ctx, runID, RunStateApproved, attempt)
 			m.emitExecutionPlan(ctx, runID, posture, intent, artifact, attempt)
+			m.observe("maestro.outcome.publish", "event", fmt.Sprintf("run_id=%s status=%s", runID, status))
 			return m.outcomes.PublishOutcome(ctx, newOutcomeSummary(status, summary, learning))
 		}
 
@@ -253,6 +264,7 @@ func (m *Maestro) HandleIntent(ctx context.Context, submission IntentSubmission)
 			summary := fmt.Sprintf("Guardian blocked run %s: %s", runID, decision.Guidance.Description)
 			learning := extractLearning(decision.Guidance.Description)
 			m.emitRunState(ctx, runID, RunStateBlocked, attempt)
+			m.observe("maestro.outcome.publish", "event", fmt.Sprintf("run_id=%s status=%s", runID, OutcomeStatusBlocked))
 			return m.outcomes.PublishOutcome(ctx, newOutcomeSummary(OutcomeStatusBlocked, summary, learning))
 		}
 
@@ -348,6 +360,7 @@ func (m *Maestro) emitRunState(ctx context.Context, runID string, state RunState
 	if m == nil || m.runStates == nil {
 		return
 	}
+	m.observe("maestro.run_state.publish", "event", fmt.Sprintf("run_id=%s state=%s attempt=%d", runID, state, attempt))
 	_ = m.runStates.PublishRunState(ctx, RunStateUpdate{
 		RunID:   runID,
 		State:   state,
@@ -361,6 +374,7 @@ func (m *Maestro) IssueGuidance(ctx context.Context, event MaestroGuidanceEvent)
 		return nil
 	}
 	m.setGuidancePending(event.RequiresResponse)
+	m.observe("maestro.guidance.publish", "event", fmt.Sprintf("run_id=%s attempt=%d", event.RunID, event.Attempt))
 	return m.guidance.PublishGuidance(ctx, event)
 }
 
@@ -372,6 +386,7 @@ func (m *Maestro) emitExecutionPlan(ctx context.Context, runID, posture, intent 
 		return
 	}
 	plan := buildExecutionPlan(runID, posture, intent, artifact, attempt)
+	m.observe("maestro.plan.publish", "event", fmt.Sprintf("run_id=%s attempt=%d", runID, attempt))
 	_ = m.plans.PublishExecutionPlan(ctx, plan)
 }
 
