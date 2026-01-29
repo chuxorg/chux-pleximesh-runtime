@@ -1,0 +1,5 @@
+{"Sequence":1,"RunID":"run-aborted-001","Type":"system.run.started","SchemaVersion":"v1","Timestamp":"2025-01-02T00:00:00Z","Emitter":{"AgentID":"runtime","Role":"system"}}
+{"Sequence":2,"RunID":"run-aborted-001","Type":"guardian.decision","SchemaVersion":"v1","Timestamp":"2025-01-02T00:00:01Z","Emitter":{"AgentID":"guardian-core","Role":"guardian"},"Decision":{"Outcome":"REJECT","Evidence":"policy violation"}}
+{"Sequence":3,"RunID":"run-aborted-001","Type":"engineer.reviewed","SchemaVersion":"v1","Timestamp":"2025-01-02T00:00:02Z","Emitter":{"AgentID":"engineer-core","Role":"engineer"}}
+{"Sequence":4,"RunID":"run-aborted-001","Type":"qa.reported","SchemaVersion":"v1","Timestamp":"2025-01-02T00:00:03Z","Emitter":{"AgentID":"qa-core","Role":"qa"}}
+{"Sequence":5,"RunID":"run-aborted-001","Type":"system.run.aborted","SchemaVersion":"v1","Timestamp":"2025-01-02T00:00:04Z","Emitter":{"AgentID":"runtime","Role":"system"},"Metadata":{"evidence":"guardian.reject"}}
