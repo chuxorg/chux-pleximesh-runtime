@@ -1,0 +1,9 @@
+{
+  "repo": "chux-pleximesh-runtime",
+  "purpose": "pleximesh core runtime (go)",
+  "canonical_branch": "task/runtime-hardening-phase1",
+  "notes": [
+    "this repo is runtime; AWACS is the electron UI repo",
+    "qa orchestration lives in a separate repo"
+  ]
+}
