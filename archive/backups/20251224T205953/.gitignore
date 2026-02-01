@@ -1,0 +1,49 @@
+# Compiled binaries and test artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build output and distribution directories
+bin/
+build/
+dist/
+.cache/
+data/
+
+# Profiling, coverage, and benchmarking files
+*.pprof
+*.prof
+*.profraw
+*.cov
+*.cover
+*.coverprofile
+coverage.out
+
+# Dependency management (remove if you vendor dependencies intentionally)
+vendor/
+
+# Editor and tooling metadata
+.idea/
+.vscode/
+*.code-workspace
+
+# OS-specific clutter
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+.env*
+.cache/
+
+# Runtime artifacts and secrets
+.initkit/
+.env.local
+.env
+.gocache/

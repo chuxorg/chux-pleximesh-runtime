@@ -1,0 +1,19 @@
+{
+  "artifact_type": "prompt",
+  "prompt_id": "prompt-1766427102769133000",
+  "timestamp": "2025-12-22T18:11:42.769133Z",
+  "headers": {
+    "execution_id": "exec-20251222T181142",
+    "root_execution_id": "root-20251222T181142",
+    "correlation_id": "corr-1766427102769130000",
+    "agent_id": "dummy-exec-20251222T181142"
+  },
+  "payload": {
+    "title": "DummyAgent runtime prove-out",
+    "instructions": "Prove the runtime message bus can publish, route, deliver, and ack.",
+    "inputs": {
+      "execution_id": "exec-20251222T181142",
+      "timestamp": "2025-12-22T18:11:42.769133Z"
+    }
+  }
+}

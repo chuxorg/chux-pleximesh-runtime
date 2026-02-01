@@ -1,0 +1,22 @@
+{
+  "artifact_type": "result",
+  "prompt_id": "prompt-1766513824121081000",
+  "timestamp": "2025-12-23T18:17:04.12175Z",
+  "headers": {
+    "execution_id": "exec-20251223T181704-alpha",
+    "root_execution_id": "root-20251223T181704",
+    "correlation_id": "corr-1766513824121068000",
+    "agent_id": "dummy-alpha-20251223T181704"
+  },
+  "payload": {
+    "outcome": "published lifecycle lifecycle-1",
+    "details": {
+      "agent_id": "dummy-alpha-20251223T181704",
+      "dispatched_event": "evt-runtime-1766513824121641000",
+      "execution_id": "exec-20251223T181704-alpha"
+    },
+    "logs": [
+      "2025-12-23T18:17:04.121635Z published lifecycle lifecycle-1"
+    ]
+  }
+}

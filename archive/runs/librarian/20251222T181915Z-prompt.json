@@ -1,0 +1,20 @@
+{
+  "artifact_type": "prompt",
+  "prompt_id": "prompt-1766427555661769000",
+  "timestamp": "2025-12-22T18:19:15.66177Z",
+  "headers": {
+    "execution_id": "exec-20251222T181915-bravo",
+    "root_execution_id": "root-20251222T181915",
+    "correlation_id": "corr-1766427555660795000",
+    "agent_id": "dummy-bravo-20251222T181915"
+  },
+  "payload": {
+    "title": "DummyAgent-bravo runtime prove-out",
+    "instructions": "Observe message bus fan-out under multiple subscribers.",
+    "inputs": {
+      "agent_label": "bravo",
+      "execution_id": "exec-20251222T181915-bravo",
+      "timestamp": "2025-12-22T18:19:15.661769Z"
+    }
+  }
+}

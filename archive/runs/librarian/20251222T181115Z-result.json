@@ -1,0 +1,21 @@
+{
+  "artifact_type": "result",
+  "prompt_id": "prompt-1766427075579930000",
+  "timestamp": "2025-12-22T18:11:15.58054Z",
+  "headers": {
+    "execution_id": "exec-20251222T181115",
+    "root_execution_id": "root-20251222T181115",
+    "correlation_id": "corr-1766427075579926000",
+    "agent_id": "dummy-exec-20251222T181115"
+  },
+  "payload": {
+    "outcome": "published lifecycle lifecycle-1",
+    "details": {
+      "dispatched_event": "evt-runtime-1766427075580425000",
+      "execution_id": "exec-20251222T181115"
+    },
+    "logs": [
+      "2025-12-22T18:11:15.580424Z published lifecycle lifecycle-1"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "artifact_type": "prompt",
+  "prompt_id": "prompt-1766427613223042000",
+  "timestamp": "2025-12-22T18:20:13.223042Z",
+  "headers": {
+    "execution_id": "exec-20251222T182013-alpha",
+    "root_execution_id": "root-20251222T182013",
+    "correlation_id": "corr-1766427613222966000",
+    "agent_id": "dummy-alpha-20251222T182013"
+  },
+  "payload": {
+    "title": "DummyAgent-alpha runtime prove-out",
+    "instructions": "Observe message bus fan-out under multiple subscribers.",
+    "inputs": {
+      "agent_label": "alpha",
+      "execution_id": "exec-20251222T182013-alpha",
+      "timestamp": "2025-12-22T18:20:13.223041Z"
+    }
+  }
+}

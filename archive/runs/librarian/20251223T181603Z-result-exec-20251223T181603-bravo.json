@@ -1,0 +1,23 @@
+{
+  "artifact_type": "result",
+  "prompt_id": "prompt-1766513763976597000",
+  "timestamp": "2025-12-23T18:16:03.977589Z",
+  "headers": {
+    "execution_id": "exec-20251223T181603-bravo",
+    "root_execution_id": "root-20251223T181603",
+    "correlation_id": "corr-1766513763976372000",
+    "agent_id": "dummy-bravo-20251223T181603"
+  },
+  "payload": {
+    "outcome": "handled evt-runtime-1766513763976894000 -\u003e task-completed-2",
+    "details": {
+      "agent_id": "dummy-bravo-20251223T181603",
+      "dispatched_event": "evt-runtime-1766513763976894000",
+      "execution_id": "exec-20251223T181603-bravo"
+    },
+    "logs": [
+      "2025-12-23T18:16:03.976893Z published lifecycle lifecycle-1",
+      "2025-12-23T18:16:03.977216Z handled evt-runtime-1766513763976894000 -\u003e task-completed-2"
+    ]
+  }
+}
