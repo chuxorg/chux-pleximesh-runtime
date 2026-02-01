@@ -7,14 +7,16 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /workspace/bin/pleximesh ./cmd/mesh
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /workspace/bin/runtime-daemon ./cmd/runtime-daemon
 
 FROM gcr.io/distroless/base-debian12
 
 WORKDIR /app
 
-COPY --from=builder /workspace/bin/pleximesh /app/pleximesh
+COPY --from=builder /workspace/bin/runtime-daemon /app/runtime-daemon
 
 VOLUME ["/library"]
 
-ENTRYPOINT ["/app/pleximesh"]
+EXPOSE 8787
+
+ENTRYPOINT ["/app/runtime-daemon"]
