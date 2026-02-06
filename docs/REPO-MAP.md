@@ -15,3 +15,4 @@ Non-canonical / historical:
 - artifacts/*
 
 Explicit warning: backups/data are NOT runtime source of truth.
+Agent auth: see docs/ENV-LOCAL.md

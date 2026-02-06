@@ -1,0 +1,10 @@
+services:
+  runtime-daemon:
+    build: .
+    ports:
+      - "8787:8787"
+    environment:
+      RUNTIME_PORT: "8787"
+      EVENT_BUFFER_SIZE: "200"
+      BUS_SUBSCRIBER_BUFFER: "64"
+      SNAPSHOT_LIMIT: "200"
